@@ -1,0 +1,46 @@
+PROMPT MAESTRO — SISTEMA SERVI TECNO
+
+Actúa como arquitecto de software senior, analista de negocio, diseñador UX/UI y desarrollador full-stack.
+
+Construye un sistema de gestión empresarial llamado “Servi Tecno” para un negocio pequeño de tecnología que integra tres líneas principales:
+1. Venta de computadoras, teléfonos, accesorios y productos tecnológicos.
+2. Reparación técnica de teléfonos.
+3. Reparación de computadoras e impresoras.
+
+OBJETIVO
+Crear un sistema profesional, sencillo de usar y escalable que permita administrar toda la operación diaria del negocio, medir la rentabilidad real y separar correctamente capital, costos, ganancias personales y fondo de crecimiento del negocio.
+
+MODELO FINANCIERO INICIAL
+- El costo del producto o repuesto se recupera antes de calcular ganancia.
+- Sobre el margen restante, 60% corresponde a quien produjo la ganancia y 40% a Servi Tecno.
+- Los porcentajes deben ser configurables.
+- Cada socio puede tener una asignación semanal configurable.
+- Servi Tecno mantiene una reserva/fondo de crecimiento.
+- El sistema debe distinguir dinero personal, capital aportado, inventario y dinero perteneciente a la empresa.
+- El inventario debe poder indicar quién aportó originalmente el capital.
+
+MÓDULOS OBLIGATORIOS
+1. Dashboard: ventas/servicios día-semana-mes, margen, gastos, fondo del negocio, inventario, stock bajo, producción por socio.
+2. Ventas: producto, cantidad, costo, precio, vendedor, fecha, margen automático y descuento de inventario.
+3. Reparaciones: cliente, categoría, diagnóstico/trabajo, técnico, cobro, repuestos, estado, margen, pago técnico y parte Servi Tecno.
+4. Inventario: SKU, nombre, categoría, costo, precio, stock, dueño del capital, alerta stock bajo, valor a costo/venta.
+5. Gastos: categoría, descripción, fecha, monto.
+6. Caja y capital: aportes, retiros, fondo operativo, crecimiento, reserva, historial.
+7. Socios: nombre, rol, producción, asignación y total semanal.
+8. Reportes: diario, semanal, mensual; ventas, reparaciones, margen, gastos, producción, fondo retenido e inventario.
+9. Configuración: porcentaje productor, porcentaje Servi Tecno, asignación semanal, reserva y stock mínimo.
+
+DISEÑO
+- Interfaz moderna, limpia, profesional y responsive.
+- Navegación lateral, tarjetas KPI, tablas claras y formularios simples.
+- Identidad tecnológica azul, blanco y gris oscuro.
+- Nombre visible: SERVI TECNO.
+
+REQUISITOS TÉCNICOS DEL MVP
+Construir una aplicación web funcional que pueda abrirse directamente en navegador y guardar datos localmente mediante localStorage, con exportación/importación de respaldo JSON. No depender de servidor para poder probarla.
+
+ARQUITECTURA FUTURA
+Preparar el sistema para migrar a Next.js/React + API backend + PostgreSQL + autenticación + roles/permisos + auditoría + copias de seguridad + múltiples empleados/sucursales + clientes/proveedores + órdenes de reparación + compras + cuentas por cobrar/pagar + reportes PDF/Excel.
+
+ENTREGABLE
+Genera un MVP funcional, con datos de ejemplo de una semana buena, listo para probar. Prioriza exactitud de cálculos, claridad del flujo financiero y facilidad de uso.
