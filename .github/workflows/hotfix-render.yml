@@ -1,4 +1,4 @@
-name: Hotfix render
+name: Reset test data
 
 on:
   push:
@@ -9,27 +9,28 @@ permissions:
   contents: write
 
 jobs:
-  fix-render:
+  reset-test-data:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fix table renderer
+      - name: Switch to clean local storage namespace
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-          old = "rows.join('')"
-          new = "(Array.isArray(rows)?rows.join(''):rows)"
+          old = "const STORE='servitecno_v2';"
+          new = "const STORE='servitecno_v4_pruebas_limpias';"
           if old not in s:
-              raise SystemExit('Target pattern not found')
-          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+              old = "const STORE='servitecno_v4_pruebas_limpias';"
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
           PY
-      - name: Commit hotfix
+      - name: Commit reset
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
           git diff --cached --quiet && exit 0
-          git commit -m "Hotfix render navigation and repairs table"
+          git commit -m "Resetear datos de prueba y arrancar limpio"
           git push
