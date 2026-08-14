@@ -1,0 +1,35 @@
+name: Reset prueba V6
+
+on:
+  push:
+    paths:
+      - '.github/workflows/reset-prueba-v6.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cambiar almacenamiento local a una base limpia
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          s2,count=re.subn(r"const STORE='servitecno_[^']+';", "const STORE='servitecno_v6_prueba_limpia_20260814_1441';", s, count=1)
+          if count != 1:
+              raise SystemExit('No se encontró la clave STORE para limpiar los datos')
+          p.write_text(s2,encoding='utf-8')
+          PY
+      - name: Commit reset
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Dejar V6 completamente limpia para nueva prueba"
+          git push
