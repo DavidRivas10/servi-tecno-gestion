@@ -116,7 +116,7 @@ function badgeStatus(s){const map={'Recibido':'b-blue','Diagnóstico':'b-purple'
 const paymentBadge=p=>`<span class="badge ${p==='Efectivo'?'b-green':p==='Transferencia'?'b-blue':'b-gray'}">${p}</span>`;
 const kpi=(label,value,sub='')=>`<div class="card k"><small>${label}</small><b>${value}</b><div class="sub">${sub}</div></div>`;
 const section=(title,desc,buttons='')=>`<div class="sec"><div><h2>${title}</h2><p>${desc}</p></div><div class="actions">${buttons}</div></div>`;
-function table(headers,rows){if(!rows.length)return `<div class="card empty">Sin registros todavía.</div>`;return `<div class="tbl"><table><thead><tr>${headers.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`}
+function table(headers,rows){if(!rows.length)return `<div class="card empty">Sin registros todavía.</div>`;return `<div class="tbl"><table><thead><tr>${headers.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${(Array.isArray(rows)?rows.join(''):rows)}</tbody></table></div>`}
 
 function currentCash(date=today){return db.cashSessions.find(x=>x.date===date)||null}
 function dayCashExpected(date=today){
