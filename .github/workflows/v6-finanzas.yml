@@ -1,0 +1,99 @@
+name: Servi Tecno V6 Finanzas
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v6-finanzas.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upgrade financial workflow
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          def rep(old,new,label):
+              global s
+              if old not in s:
+                  raise SystemExit(f'No se encontro: {label}')
+              s=s.replace(old,new,1)
+
+          rep("],products:[],sales:[],repairs:[],expenses:[],cashSessions:[]};",
+              "],products:[],sales:[],repairs:[],expenses:[],cashSessions:[],monthlyClosures:[]};",
+              'seed monthlyClosures')
+
+          rep("let db=load();\nfunction save()",
+              "let db=load();\ndb.monthlyClosures=Array.isArray(db.monthlyClosures)?db.monthlyClosures:[];\nfunction save()",
+              'db migration')
+
+          rep("function monthRange(d=today){const x=new Date(d+'T12:00:00');return[`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-01`,`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(new Date(x.getFullYear(),x.getMonth()+1,0).getDate()).padStart(2,'0')}`]}",
+              "function monthRange(d=today){const x=new Date(d+'T12:00:00');return[`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-01`,`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(new Date(x.getFullYear(),x.getMonth()+1,0).getDate()).padStart(2,'0')}`]}function monthBounds(key){const [y,m]=key.split('-').map(Number);const last=new Date(y,m,0).getDate();return[`${key}-01`,`${key}-${String(last).padStart(2,'0')}`]}function monthClosure(key){return db.monthlyClosures.find(x=>x.month===key)||null}function isMonthClosed(date){return !!monthClosure(date.slice(0,7))}function ensureMonthOpen(date){if(isMonthClosed(date)){alert('Ese mes ya fue cerrado. Reabre el mes desde Fondo del negocio antes de registrar movimientos con esa fecha.');return false}return true}",
+              'month helpers')
+
+          rep("const pages=[['dashboard','Dashboard'],['cash','Caja'],['sales','Ventas'],['repairs','Reparaciones'],['inventory','Inventario'],['expenses','Gastos'],['reports','Reportes'],['team','Equipo'],['settings','Configuración']];",
+              "const pages=[['dashboard','Dashboard'],['cash','Caja'],['sales','Ventas'],['repairs','Reparaciones'],['inventory','Inventario'],['expenses','Gastos'],['fund','Fondo del negocio'],['reports','Reportes'],['team','Equipo'],['settings','Configuración']];",
+              'pages')
+
+          rep("<b>${s.name}</b><div class=\"muted\">${s.role}</div><h3>${money.format(sh[s.id]||0)}</h3><small>Su 60% del margen</small>",
+              "<b>${s.name} — ${db.settings.producerPct}% personal</b><div class=\"muted\">${s.role}</div><h3>${money.format(sh[s.id]||0)}</h3><small>${db.settings.producerPct}% del margen producido por ${s.name}</small>",
+              'dashboard staff label')
+
+          rep("<b>Servi Tecno</b><div class=\"muted\">Fondo del negocio</div><h3>${money.format(d.businessGross)}</h3><small>40% del margen, antes de gastos</small>",
+              "<b>Servi Tecno — ${db.settings.businessPct}% negocio</b><div class=\"muted\">Fondo del negocio</div><h3>${money.format(d.businessGross)}</h3><small>${db.settings.businessPct}% de todos los márgenes, antes de gastos</small>",
+              'dashboard business label')
+
+          rep("'<span class=\"badge b-gray\">Día cerrado</span>'",
+              "'<button class=\"btn2\" onclick=\"openForm(\\'reopenCash\\')\">Reabrir caja</button>'",
+              'reopen cash button')
+
+          marker="if(type==='sale'){"
+          insertion="""if(type==='reopenCash'){const c=currentCash();if(!c||c.status!=='closed')return alert('La caja no está cerrada.');return openModal('Reabrir caja de hoy',`<form class=\"form\" onsubmit=\"reopenCash(event)\"><div class=\"f full\"><div class=\"notice warn\"><strong>Reapertura controlada:</strong> úsala solo si cerraste por error. El motivo quedará registrado.</div></div><div class=\"f full\"><label>Motivo de reapertura</label><textarea name=\"reason\" required placeholder=\"Ej. Faltó registrar una venta en efectivo\"></textarea></div><div class=\"f\"><label>Responsable</label><select name=\"by\">${staffOptions()}</select></div><div class=\"f full\"><div class=\"fa\"><button class=\"btn\">Reabrir caja</button></div></div></form>`)}"""+marker
+          rep(marker,insertion,'openForm reopen cash')
+
+          rep("function addSale(e){const f=fd(e),p=db.products.find(x=>x.id===f.get('productId')),q=n(f.get('qty')),date=f.get('date'),payment=f.get('payment');if(!p)return;",
+              "function reopenCash(e){const f=fd(e),c=currentCash();c.reopenHistory=Array.isArray(c.reopenHistory)?c.reopenHistory:[];c.reopenHistory.push({reason:f.get('reason'),by:f.get('by'),at:now(),previousClosing:c.closing,previousExpected:c.expectedAtClose});c.status='open';c.closing=null;c.expectedAtClose=null;c.reopenedAt=now();save();closeModal()}function addSale(e){const f=fd(e),p=db.products.find(x=>x.id===f.get('productId')),q=n(f.get('qty')),date=f.get('date'),payment=f.get('payment');if(!ensureMonthOpen(date))return;if(!p)return;",
+              'reopen function and sale month lock')
+
+          rep("function addRepair(e){const f=fd(e),date=f.get('date'),status=f.get('status'),paid=n(f.get('paid')),method=f.get('method');",
+              "function addRepair(e){const f=fd(e),date=f.get('date'),status=f.get('status'),paid=n(f.get('paid')),method=f.get('method');if(!ensureMonthOpen(date))return;",
+              'repair month lock')
+
+          rep("function addRepairPayment(e,id){const f=fd(e),r=db.repairs.find(x=>x.id===id),date=f.get('date'),amount=n(f.get('amount')),method=f.get('method');",
+              "function addRepairPayment(e,id){const f=fd(e),r=db.repairs.find(x=>x.id===id),date=f.get('date'),amount=n(f.get('amount')),method=f.get('method');if(!ensureMonthOpen(date))return;",
+              'repair payment month lock')
+
+          rep("function addExpense(e){const f=fd(e),date=f.get('date'),payment=f.get('payment');",
+              "function addExpense(e){const f=fd(e),date=f.get('date'),payment=f.get('payment');if(!ensureMonthOpen(date))return;",
+              'expense month lock')
+
+          fund_code=r'''let fundMonth=today.slice(0,7);function renderFund(){const[a,b]=monthBounds(fundMonth),live=calc(a,b),closed=monthClosure(fundMonth),r=closed?closed.summary:live;const exp=db.expenses.filter(x=>inRange(x.date,a,b));const cats={};exp.forEach(x=>cats[x.category]=(cats[x.category]||0)+n(x.amount));const accumulated=calc('2000-01-01',b);document.querySelector('#fund').innerHTML=`<div class="sec"><div><h2>Fondo del negocio</h2><p>Control mensual del ${db.settings.businessPct}% que pertenece a Servi Tecno</p></div><div class="actions"><input class="datePill" type="month" value="${fundMonth}" onchange="fundMonth=this.value;render()">${closed?'<span class="badge b-gray">Mes cerrado</span><button class="btn2" onclick="reopenMonth()">Reabrir mes</button>':'<button class="btn" onclick="closeMonth()">Cerrar mes</button>'}</div></div><div class="grid g6">${kpi(`Servi Tecno ${db.settings.businessPct}%`,money.format(r.businessGross),'Parte del negocio generada')}${kpi('Gastos del mes',money.format(r.expensesTotal),'Egresos del negocio')}${kpi('Fondo neto',money.format(r.businessNet),`${db.settings.businessPct}% menos gastos`)}${kpi(`Reserva ${db.settings.reservePct}%`,money.format(r.reserve),'Apartado para crecimiento')}${kpi('Disponible operativo',money.format(r.availableBusiness),'Después de reserva')}${kpi('Fondo acumulado estimado',money.format(accumulated.businessNet),'Histórico 40% menos gastos')}</div><div class="grid g2" style="margin-top:14px"><div class="card"><h3>Detalle de gastos del mes</h3>${Object.keys(cats).length?Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="sum"><span>${k}</span><b>${money.format(v)}</b></div>`).join(''):'<div class="muted">Sin gastos registrados.</div>'}</div><div class="card"><h3>Cómo se forma el fondo</h3><div class="sum"><span>Margen de ventas</span><b>${money.format(r.salesMarginTotal||0)}</b></div><div class="sum"><span>Margen de reparaciones terminadas</span><b>${money.format(r.repairMarginTotal||0)}</b></div><div class="sum"><span>Servi Tecno ${db.settings.businessPct}%</span><b>${money.format(r.businessGross)}</b></div><div class="sum"><span>− Gastos</span><b>${money.format(r.expensesTotal)}</b></div><div class="sum"><span>= Fondo neto</span><b>${money.format(r.businessNet)}</b></div></div></div>${section('Cierres mensuales','Cada cierre congela un resumen del mes')}${table(['Mes','Cerrado','40% negocio','Gastos','Fondo neto','Reserva','Disponible'],[...db.monthlyClosures].sort((x,y)=>y.month.localeCompare(x.month)).map(x=>`<tr><td><b>${x.month}</b></td><td>${new Date(x.closedAt).toLocaleString('es-HN')}</td><td>${money.format(x.summary.businessGross)}</td><td>${money.format(x.summary.expensesTotal)}</td><td>${money.format(x.summary.businessNet)}</td><td>${money.format(x.summary.reserve)}</td><td>${money.format(x.summary.availableBusiness)}</td></tr>`))}<div class="notice" style="margin-top:14px"><strong>Cierre mensual:</strong> al cerrar un mes ya no se permiten nuevas ventas, gastos o cobros con fechas de ese mes. Si necesitas corregir algo, debes reabrirlo dejando un motivo.</div>`}function closeMonth(){if(monthClosure(fundMonth))return alert('Este mes ya está cerrado.');if(!confirm(`¿Cerrar ${fundMonth}? Después no podrás registrar movimientos con fechas de ese mes sin reabrirlo.`))return;const[a,b]=monthBounds(fundMonth),r=calc(a,b);db.monthlyClosures.push({month:fundMonth,closedAt:now(),closedBy:'david',summary:{salesRevenue:r.salesRevenue,salesMarginTotal:r.salesMarginTotal,repairRevenue:r.repairRevenue,repairMarginTotal:r.repairMarginTotal,repairCollected:r.repairCollected,expensesTotal:r.expensesTotal,businessGross:r.businessGross,businessNet:r.businessNet,reserve:r.reserve,availableBusiness:r.availableBusiness}});save()}function reopenMonth(){const c=monthClosure(fundMonth);if(!c)return;const reason=prompt('Motivo para reabrir el mes:');if(!reason)return;c.reopenedHistory=Array.isArray(c.reopenedHistory)?c.reopenedHistory:[];c.reopenedHistory.push({reason,at:now(),by:'david',previousClosedAt:c.closedAt});db.monthlyClosures=db.monthlyClosures.filter(x=>x!==c);save()}'''
+          rep("let reportMode='week';",fund_code+"let reportMode='week';",'fund renderer')
+
+          rep("try{renderExpenses()}catch(e){console.error('expenses',e)}try{renderReports()}",
+              "try{renderExpenses()}catch(e){console.error('expenses',e)}try{renderFund()}catch(e){console.error('fund',e)}try{renderReports()}",
+              'render fund')
+
+          rep("<h3>60% de cada persona</h3>","<h3>${db.settings.producerPct}% personal de cada uno</h3>",'report title')
+          rep("<span><b>${s.name}</b><br><small class=\"muted\">${s.role}</small></span><b>${money.format(sh[s.id]||0)}</b>","<span><b>${s.name} — ${db.settings.producerPct}%</b><br><small class=\"muted\">${s.role}</small></span><b>${money.format(sh[s.id]||0)}</b>",'report person labels')
+          rep("<h3>Servi Tecno</h3><div class=\"sum\"><span>40% generado</span>","<h3>Servi Tecno — ${db.settings.businessPct}% del negocio</h3><div class=\"sum\"><span>${db.settings.businessPct}% generado</span>",'report business label')
+          rep("${section('Equipo','Participación semanal calculada con la misma regla 60/40')}","${section('Equipo',`Participación semanal: ${db.settings.producerPct}% personal para quien produce y ${db.settings.businessPct}% para Servi Tecno`)}",'team section')
+          rep("<small>Su 60% semanal</small>","<small>${db.settings.producerPct}% personal semanal</small>",'team personal label')
+
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit upgrade
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "V6: fondo mensual, cierres y reapertura controlada de caja"
+          git push
