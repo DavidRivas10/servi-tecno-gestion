@@ -1,0 +1,46 @@
+name: Mejorar reportes V7
+
+on:
+  push:
+    paths:
+      - '.github/workflows/reportes-v7.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  upgrade-reports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mejorar controles Día Semana Mes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          css_old=".tabs{display:flex;gap:7px;flex-wrap:wrap}.tab{border:1px solid var(--line);background:#fff;color:#475569;padding:8px 11px;border-radius:9px;font-weight:750}.tab.active{background:#eaf2ff;color:var(--primary);border-color:#cfe0ff}"
+          css_new=".tabs{display:flex;gap:7px;flex-wrap:wrap}.tab{border:1px solid var(--line);background:#fff;color:#475569;padding:9px 13px;border-radius:10px;font-weight:800;transition:.15s}.tab:hover{border-color:#9ec1ff;color:var(--primary)}.tab.active{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 5px 14px rgba(21,101,216,.2)}.reportControls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.periodBox{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:5px}.periodBox button{width:34px;height:34px;border:0;border-radius:8px;background:#f1f5f9;color:#334155;font-weight:900}.periodBox button:hover{background:#e2e8f0}.periodTitle{font-size:13px;font-weight:850;color:#334155;min-width:205px;text-align:center}.reportAnchor{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 9px;color:#475569}.reportBadge{display:inline-flex;align-items:center;padding:6px 9px;border-radius:999px;background:#eef4ff;color:var(--primary);font-size:11px;font-weight:850}"
+          if css_old not in s: raise SystemExit('CSS tabs no encontrado')
+          s=s.replace(css_old,css_new,1)
+
+          old="let reportMode='week';function reportRange(){return reportMode==='day'?[today,today]:reportMode==='month'?monthRange():weekRange()}"
+          new="""let reportMode='day',reportAnchor=today;function reportRange(){return reportMode==='day'?[reportAnchor,reportAnchor]:reportMode==='month'?monthRange(reportAnchor):weekRange(reportAnchor)}function setReportMode(mode){reportMode=mode;renderReports()}function setReportAnchor(value){if(value)reportAnchor=value;renderReports()}function reportShift(step){const d=new Date(reportAnchor+'T12:00:00');if(reportMode==='day')d.setDate(d.getDate()+step);else if(reportMode==='week')d.setDate(d.getDate()+(7*step));else d.setMonth(d.getMonth()+step);reportAnchor=localISO(d);renderReports()}function reportToday(){reportAnchor=today;renderReports()}function reportPeriodLabel(a,b){const fmt=new Intl.DateTimeFormat('es-HN',{day:'2-digit',month:'short',year:'numeric'});if(a===b)return fmt.format(new Date(a+'T12:00:00'));if(reportMode==='month'){const d=new Date(a+'T12:00:00');return new Intl.DateTimeFormat('es-HN',{month:'long',year:'numeric'}).format(d)}return `${fmt.format(new Date(a+'T12:00:00'))} — ${fmt.format(new Date(b+'T12:00:00'))}`}"""
+          if old not in s: raise SystemExit('Bloque reportMode no encontrado')
+          s=s.replace(old,new,1)
+
+          start=s.index("function renderReports(){")
+          end=s.index("function renderTeam(){",start)
+          new_render=r'''function renderReports(){const[a,b]=reportRange(),r=calc(a,b),sh=staffShares(a,b),label=reportPeriodLabel(a,b),modeName=reportMode==='day'?'Reporte diario':reportMode==='week'?'Reporte semanal':'Reporte mensual';document.querySelector('#reports').innerHTML=`<div class="sec"><div><h2>${modeName}</h2><p><span class="reportBadge">${label}</span></p></div><div class="reportControls"><div class="tabs"><button class="tab ${reportMode==='day'?'active':''}" onclick="setReportMode('day')">Día</button><button class="tab ${reportMode==='week'?'active':''}" onclick="setReportMode('week')">Semana</button><button class="tab ${reportMode==='month'?'active':''}" onclick="setReportMode('month')">Mes</button></div><div class="periodBox"><button title="Período anterior" onclick="reportShift(-1)">‹</button><div class="periodTitle">${label}</div><button title="Período siguiente" onclick="reportShift(1)">›</button></div><input class="reportAnchor" type="date" value="${reportAnchor}" onchange="setReportAnchor(this.value)" title="Fecha de referencia"><button class="btn3" onclick="reportToday()">Hoy</button><button class="btn2" onclick="print()">Imprimir / PDF</button></div></div><div class="notice" style="margin-bottom:14px"><strong>${modeName}:</strong> todos los valores de abajo corresponden únicamente al período <strong>${label}</strong>. Cambiar Día, Semana o Mes recalcula ventas, reparaciones, márgenes, gastos y participaciones.</div><div class="grid g6">${kpi('Ventas',money.format(r.salesRevenue),`${r.sales.length} venta${r.sales.length===1?'':'s'}`)}${kpi('Reparaciones realizadas',money.format(r.repairRevenue),`${r.repairsDone.length} terminada${r.repairsDone.length===1?'':'s'}`)}${kpi('Cobrado reparaciones',money.format(r.repairCollected),'Pagos recibidos en el período')}${kpi('Margen total',money.format(r.salesMarginTotal+r.repairMarginTotal),'Ventas + servicios terminados')}${kpi('Gastos',money.format(r.expensesTotal),`${r.expenses.length} gasto${r.expenses.length===1?'':'s'}`)}${kpi('Fondo negocio neto',money.format(r.businessNet),`${db.settings.businessPct}% negocio menos gastos`)}</div><div class="grid g2" style="margin-top:14px"><div class="card"><h3>${db.settings.producerPct}% personal por socio</h3>${db.staff.map(s=>`<div class="sum"><span><b>${s.name} — ${db.settings.producerPct}% personal</b><br><small class="muted">${s.role}</small></span><b>${money.format(sh[s.id]||0)}</b></div>`).join('')}</div><div class="card"><h3>Servi Tecno — ${db.settings.businessPct}% del negocio</h3><div class="sum"><span>${db.settings.businessPct}% generado</span><b>${money.format(r.businessGross)}</b></div><div class="sum"><span>− Gastos del período</span><b>${money.format(r.expensesTotal)}</b></div><div class="sum"><span>Fondo neto</span><b>${money.format(r.businessNet)}</b></div><div class="sum"><span>Reserva crecimiento ${db.settings.reservePct}%</span><b>${money.format(r.reserve)}</b></div><div class="sum"><span>Disponible operativo</span><b>${money.format(r.availableBusiness)}</b></div></div></div>${section('Movimientos incluidos',`Detalle que compone este ${reportMode==='day'?'día':reportMode==='week'?'período semanal':'mes'}`)}<div class="grid g3">${kpi('Operaciones de venta',r.sales.length,money.format(r.salesRevenue))}${kpi('Servicios terminados',r.repairsDone.length,money.format(r.repairRevenue))}${kpi('Gastos registrados',r.expenses.length,money.format(r.expensesTotal))}</div>`}'''
+          s=s[:start]+new_render+s[end:]
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit cambios
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "V7: reportes navegables por día semana y mes"
+          git push
